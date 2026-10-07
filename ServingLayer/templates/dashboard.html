@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Health Analytics Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            background: white;
+            border-radius: 20px;
+            padding: 30px 40px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            animation: slideDown 0.5s ease-out;
+            position: relative;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1rem;
+        }
+
+        /* Live Indicator */
+        .live-indicator {
+            position: absolute;
+            top: 30px;
+            right: 40px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 20px;
+            background: #f0f0f0;
+            border-radius: 25px;
+        }
+
+        .live-dot {
+            width: 12px;
+            height: 12px;
+            background: #48bb78;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.5;
+                transform: scale(1.1);
+            }
+        }
+
+        .live-text {
+            font-weight: 600;
+            color: #333;
+            font-size: 0.9rem;
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .stat-card .icon {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .stat-card h3 {
+            font-size: 0.85rem;
+            color: #666;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        .stat-card .value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .stat-card.blue { border-left: 4px solid #4299e1; }
+        .stat-card.red { border-left: 4px solid #f56565; }
+        .stat-card.green { border-left: 4px solid #48bb78; }
+        .stat-card.purple { border-left: 4px solid #9f7aea; }
+        .stat-card.orange { border-left: 4px solid #ed8936; }
+
+        /* Chart Container */
+        .chart-container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+            animation: fadeInUp 0.8s ease-out;
+        }
+
+        /* Grid Layout for Charts */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        /* Refresh Button */
+        .refresh-controls {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            z-index: 1000;
+        }
+
+        .refresh-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .refresh-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+        }
+
+        .refresh-btn:active {
+            transform: translateY(-1px);
+        }
+
+        .refresh-btn.loading {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            display: none;
+        }
+
+        .refresh-btn.loading .spinner {
+            display: block;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Last Updated */
+        .last-updated {
+            text-align: center;
+            color: white;
+            padding: 15px;
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8rem;
+            }
+            
+            .live-indicator {
+                position: static;
+                margin-top: 15px;
+                justify-content: center;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .refresh-controls {
+                bottom: 15px;
+                right: 15px;
+            }
+            
+            .refresh-btn {
+                padding: 12px 20px;
+                font-size: 0.9rem;
+            }
+        }
+
+        /* Toast Notification */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #48bb78;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            z-index: 2000;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+        }
+
+        .toast.show {
+            transform: translateX(0);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🏥 Real-Time Health Analytics Dashboard</h1>
+            <p>Live monitoring of patient health metrics from Cassandra IoT data stream</p>
+            <div class="live-indicator">
+                <div class="live-dot"></div>
+                <span class="live-text">LIVE</span>
+            </div>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="stats-grid">
+            <div class="stat-card blue">
+                <div class="icon">👥</div>
+                <h3>Total Patients</h3>
+                <div class="value" id="stat-total">{{ stats.total_patients }}</div>
+            </div>
+
+            <div class="stat-card red">
+                <div class="icon">🦠</div>
+                <h3>Pneumonia Cases</h3>
+                <div class="value" id="stat-pneumonia">{{ stats.pneumonia_cases }}</div>
+            </div>
+
+            <div class="stat-card green">
+                <div class="icon">✅</div>
+                <h3>Normal Cases</h3>
+                <div class="value" id="stat-normal">{{ stats.normal_cases }}</div>
+            </div>
+
+            <div class="stat-card orange">
+                <div class="icon">📊</div>
+                <h3>Pneumonia Rate</h3>
+                <div class="value" id="stat-rate">{{ stats.pneumonia_rate }}%</div>
+            </div>
+
+            <div class="stat-card purple">
+                <div class="icon">💓</div>
+                <h3>Avg SpO2</h3>
+                <div class="value" id="stat-spo2">{{ stats.avg_spo2 }}%</div>
+            </div>
+        </div>
+
+        <!-- Row 1: Status & Symptoms -->
+        <div class="charts-grid">
+            <div class="chart-container">
+                <div id="statusChart"></div>
+            </div>
+            <div class="chart-container">
+                <div id="symptomsChart"></div>
+            </div>
+        </div>
+
+        <!-- Row 2: Health Metrics Dashboard -->
+        <div class="chart-container full-width">
+            <div id="healthMetricsChart"></div>
+        </div>
+
+        <!-- Row 3: Geographic Map -->
+        <div class="chart-container full-width">
+            <div id="geoMapChart"></div>
+        </div>
+
+        <!-- Row 4: Top Cities & Regional Analysis -->
+        <div class="charts-grid">
+            <div class="chart-container">
+                <div id="topCitiesChart"></div>
+            </div>
+            <div class="chart-container">
+                <div id="regionStatusChart"></div>
+            </div>
+        </div>
+
+        <!-- Row 5: Air Quality -->
+        <div class="chart-container full-width">
+            <div id="airQualityChart"></div>
+        </div>
+
+        <!-- Last Updated -->
+        <div class="last-updated">
+            Last updated: <span id="last-update-time">{{ stats.timestamp }}</span>
+        </div>
+    </div>
+
+    <!-- Refresh Button -->
+    <div class="refresh-controls">
+        <button class="refresh-btn" onclick="refreshDashboard()">
+            <div class="spinner"></div>
+            <span>🔄 Refresh Data</span>
+        </button>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast">
+        Dashboard updated successfully!
+    </div>
+
+    <script>
+        // Configuration for all plots
+        const config = {
+            responsive: true,
+            displayModeBar: true,
+            displaylogo: false,
+            modeBarButtonsToRemove: ['lasso2d', 'select2d']
+        };
+
+        // Load all visualizations
+        function loadCharts() {
+            try {
+                const statusData = {{ status_dist | safe }};
+                Plotly.newPlot('statusChart', statusData.data, statusData.layout, config);
+            } catch (e) {
+                console.error('Error loading status chart:', e);
+            }
+
+            try {
+                const symptomsData = {{ symptoms | safe }};
+                Plotly.newPlot('symptomsChart', symptomsData.data, symptomsData.layout, config);
+            } catch (e) {
+                console.error('Error loading symptoms chart:', e);
+            }
+
+            try {
+                const healthData = {{ health_metrics | safe }};
+                Plotly.newPlot('healthMetricsChart', healthData.data, healthData.layout, config);
+            } catch (e) {
+                console.error('Error loading health metrics chart:', e);
+            }
+
+            try {
+                const geoData = {{ geo_map | safe }};
+                Plotly.newPlot('geoMapChart', geoData.data, geoData.layout, config);
+            } catch (e) {
+                console.error('Error loading geo map:', e);
+            }
+
+            try {
+                const citiesData = {{ top_cities | safe }};
+                Plotly.newPlot('topCitiesChart', citiesData.data, citiesData.layout, config);
+            } catch (e) {
+                console.error('Error loading cities chart:', e);
+            }
+
+            try {
+                const regionData = {{ region_status | safe }};
+                Plotly.newPlot('regionStatusChart', regionData.data, regionData.layout, config);
+            } catch (e) {
+                console.error('Error loading region status chart:', e);
+            }
+
+            try {
+                const airData = {{ air_quality | safe }};
+                Plotly.newPlot('airQualityChart', airData.data, airData.layout, config);
+            } catch (e) {
+                console.error('Error loading air quality chart:', e);
+            }
+        }
+
+        // Initialize charts on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadCharts();
+            updateTimestamp();
+            
+            // Auto-refresh every 30 seconds
+            setInterval(autoRefresh, 30000);
+        });
+
+        // Window resize handler
+        window.addEventListener('resize', function() {
+            const charts = ['statusChart', 'symptomsChart', 'healthMetricsChart', 
+                          'geoMapChart', 'topCitiesChart', 'regionStatusChart', 'airQualityChart'];
+            charts.forEach(id => {
+                const element = document.getElementById(id);
+                if (element && element.data) {
+                    Plotly.Plots.resize(id);
+                }
+            });
+        });
+
+        // Manual refresh function
+        function refreshDashboard() {
+            const btn = document.querySelector('.refresh-btn');
+            btn.classList.add('loading');
+            
+            // Reload the page
+            setTimeout(() => {
+                location.reload();
+            }, 500);
+        }
+
+        // Auto-refresh function
+        async function autoRefresh() {
+            try {
+                const response = await fetch('/api/realtime-data');
+                const data = await response.json();
+                
+                // Update statistics
+                if (data.total_patients !== undefined) {
+                    document.getElementById('stat-total').textContent = data.total_patients;
+                    document.getElementById('stat-pneumonia').textContent = data.pneumonia_cases;
+                    document.getElementById('stat-normal').textContent = data.normal_cases;
+                    
+                    if (data.total_patients > 0) {
+                        const rate = ((data.pneumonia_cases / data.total_patients) * 100).toFixed(2);
+                        document.getElementById('stat-rate').textContent = rate + '%';
+                    }
+                    
+                    if (data.avg_spo2) {
+                        document.getElementById('stat-spo2').textContent = data.avg_spo2 + '%';
+                    }
+                }
+                
+                updateTimestamp();
+                showToast();
+            } catch (error) {
+                console.error('Auto-refresh error:', error);
+            }
+        }
+
+        // Update timestamp
+        function updateTimestamp() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString();
+            document.getElementById('last-update-time').textContent = timeString;
+        }
+
+        // Show toast notification
+        function showToast() {
+            const toast = document.getElementById('toast');
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // Console welcome message
+        console.log('%c🏥 Real-Time Health Analytics Dashboard', 'font-size: 20px; color: #667eea; font-weight: bold;');
+        console.log('%cDashboard loaded successfully!', 'font-size: 14px; color: #48bb78;');
+        console.log('API Endpoints:');
+        console.log('  - /api/realtime-data');
+        console.log('  - /api/full-data');
+        console.log('  - /health');
+    </script>
+</body>
+</html>
